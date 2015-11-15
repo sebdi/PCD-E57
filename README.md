@@ -18,3 +18,7 @@ TESTED ON:
 - Ubuntu 14.04 x64 with PCL git-master (from https://github.com/PointCloudLibrary/pcl)
 - Ubuntu 14.04 x64 with libpcl-all (from ppa:v-launchpad-jochen-sprickerhof-de/pcl) (Codeship setup)
 
+How to use
+-------------------
+
+    ./e57_2_pcd <e57-filename>

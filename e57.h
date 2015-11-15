@@ -83,7 +83,7 @@ private:
 public:
     E57(){}
     ~E57(){}
-    inline int openE57(const std::string &filename, PtrXYZ &pointcloud, float &scale_factor){
+    inline int openE57(const std::string &filename, PtrXYZ &pointcloud, float &scale_factor, int iScan){
         try{
             ImageFile imf(filename, "r");
             StructureNode root = imf.root();
@@ -105,19 +105,45 @@ public:
 
             /// Print number of children of data3D.  This is the number of scans in file.
             int64_t scanCount = data3D.childCount();
-            //~
 
             if(scanCount == 0){
                 cout <<"File doesn't contain valid informations."<<endl;
                 return 0;
             }
 
+            /// The file might contain more than one scan. If so, iterate through the scans ...
+            cout << "************************ CONVERT SCAN " << iScan << " ************************" << endl;
+
             /// Get scan from "/data3D", assume its a Structure (else get exception)
-            StructureNode scan(data3D.get(0));
+            StructureNode scan(data3D.get(iScan));
+
+            /// Get "pose" field in scan which contains the extrinsics of each scan
+            StructureNode pose(scan.get("pose"));
+
+            /// Often there is no rotation, therefore it is w=1, x=0, y=0, z=0
+            if(pose.isDefined("rotation"))
+            {
+                StructureNode rotation(pose.get("rotation"));
+                cout << "Rotation as quaternion " << endl;
+                cout << "w=" << FloatNode(rotation.get("w")).value();
+                cout << ", x=" << FloatNode(rotation.get("x")).value();
+                cout << ", y=" << FloatNode(rotation.get("y")).value();
+                cout << ", z=" << FloatNode(rotation.get("z")).value() << endl;
+            }
+
+            if(pose.isDefined("translation"))
+            {
+                StructureNode translation(pose.get("translation"));
+                cout << "Translation: ";
+                cout << "x=" << FloatNode(translation.get("x")).value();
+                cout << ", y=" << FloatNode(translation.get("y")).value();
+                cout << ", z=" << FloatNode(translation.get("z")).value() << endl;
+            }
+
             /// Get "points" field in scan.  Should be a CompressedVectorNode.
             CompressedVectorNode points(scan.get("points"));
 
-            cout<<"Points: "<<points.childCount()<<endl;
+            cout << "Points: " << points.childCount() << endl;
             pointcloud->width = points.childCount();
             pointcloud->height = 1;
             pointcloud->is_dense = false;
@@ -192,7 +218,6 @@ public:
 
                 return 0;
             }
-
         } catch(E57Exception& ex){
             cout << "Error during reading file: " << ex.what() << endl;
             return -1;
@@ -378,6 +403,43 @@ public:
         }
 
         return 1;
+    }
+
+    inline int getNumberOfScans(const std::string &filename){
+        try{
+            ImageFile imf(filename, "r");
+            StructureNode root = imf.root();
+            /// Make sure vector of scans is defined and of expected type.
+            /// If "/data3D" wasn't defined, the call to root.get below would raise an exception.
+            if (!root.isDefined("/data3D")) {
+                cout << "File doesn't contain 3D images."<<endl;
+                return 0;
+            }
+            Node n = root.get("/data3D");
+            if (n.type() != E57_VECTOR) {
+                cout <<"File Corrupted. Error during opening."<<endl;
+                return 0;
+            }
+
+            /// The node is a vector so we can safely get a VectorNode handle to it.
+            /// If n was not a VectorNode, this would raise an exception.
+            VectorNode data3D(n);
+
+            /// Print number of children of data3D.  This is the number of scans in file.
+            int64_t scanCount = data3D.childCount();
+            cout << "\"" << filename << "\"" << " contains " << scanCount << " scans" << endl;
+
+            if(scanCount == 0){
+                cout <<"File doesn't contain valid informations."<<endl;
+                return 0;
+            }
+
+            return scanCount;
+
+        } catch(E57Exception& ex){
+            cout << "Error during reading file: " << ex.what() << endl;
+            return -1;
+        }
     }
 };
 
