@@ -32,7 +32,6 @@ class E57{
 private:
     //Used for discovering Max and Minimum of a Pointcloud, before saving it in E57: this is an info required by E57 file format
     inline void findMaxMin(PtrXYZ &pointcloud, StructMaxMin *vector){
-
         //setup of max and min for the 4 values of PointCloud structure
         vector[0].max = pointcloud->points[0].x;
         vector[0].min = pointcloud->points[0].x;
@@ -157,10 +156,15 @@ public:
                 float *x = new float[points.childCount()];
                 float *y = new float[points.childCount()];
                 float *z = new float[points.childCount()];
+                float *i = new float[points.childCount()];
                 destBuffers.push_back(SourceDestBuffer(imf, "cartesianX", x, points.childCount(), true));
                 destBuffers.push_back(SourceDestBuffer(imf, "cartesianY", y, points.childCount(), true));
                 destBuffers.push_back(SourceDestBuffer(imf, "cartesianZ", z, points.childCount(), true));
-                //destBuffers.push_back(SourceDestBuffer(imf, "intensity", intensity, points.childCount(), true));
+                if (proto.isDefined("intensity"))
+                {
+                    std::cout << "there are intensity values" << std::endl;
+                    destBuffers.push_back(SourceDestBuffer(imf, "intensity", i, points.childCount(), true));
+                }
                 /// Create a reader of the points CompressedVector, try to read first block of N points
                 /// Each call to reader.read() will fill the xyz buffers until the points are exhausted.
                 CompressedVectorReader reader = points.reader(destBuffers);
@@ -176,6 +180,8 @@ public:
                     point.x = x[j];	//seems E57 is expressed in millimeters
                     point.y = y[j];	//seems E57 is expressed in millimeters
                     point.z = z[j];	//seems E57 is expressed in millimeters
+                    if (proto.isDefined("intensity"))
+                    point.intensity = i[j];
 
                     if(point.x > 10000 || point.y > 10000 || point.z > 10000)
                     {
